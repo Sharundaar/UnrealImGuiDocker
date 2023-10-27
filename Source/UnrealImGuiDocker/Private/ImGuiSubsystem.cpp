@@ -105,6 +105,7 @@ public:
 	virtual FReply OnMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	virtual void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	virtual void OnMouseLeave(const FPointerEvent& MouseEvent) override;
+	virtual void OnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent) override;
 
 	void UpdateDrawData(ImDrawData* InDrawData);
 	
@@ -113,6 +114,7 @@ private:
 	FName Identifier;
 	FImGuiDrawData DrawData = {};
 	FVector2f CachedPosition;
+	int DisableThrottling = 0;
 };
 
 SLATE_IMPLEMENT_WIDGET(SImGuiCanvas)
@@ -220,7 +222,16 @@ FReply SImGuiCanvas::OnMouseButtonDown(const FGeometry& MyGeometry, const FPoint
     	IO.AddMouseButtonEvent(ImGuiMouseButton_Middle, true);
     }
 
-	return FReply::Unhandled().CaptureMouse(SharedThis(this));
+	if(IO.WantCaptureMouse)
+	{
+		FSlateThrottleManager::Get().DisableThrottle(true);
+		DisableThrottling++;
+		return FReply::Handled().CaptureMouse(SharedThis(this));
+	}
+	else
+	{
+		return FReply::Unhandled();
+	}
 }
 
 FReply SImGuiCanvas::OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
@@ -240,8 +251,20 @@ FReply SImGuiCanvas::OnMouseButtonUp(const FGeometry& MyGeometry, const FPointer
 	{
 		IO.AddMouseButtonEvent(ImGuiMouseButton_Middle, false);
 	}
-
-	return FReply::Unhandled().ReleaseMouseCapture();
+	
+	if(HasMouseCapture())
+	{
+		while(DisableThrottling)
+		{
+			FSlateThrottleManager::Get().DisableThrottle(false);
+			DisableThrottling--;
+		}
+		return FReply::Handled().ReleaseMouseCapture();
+	}
+	else
+	{
+		return FReply::Unhandled();
+	}
 }
 
 FReply SImGuiCanvas::OnMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
@@ -251,6 +274,9 @@ FReply SImGuiCanvas::OnMouseMove(const FGeometry& MyGeometry, const FPointerEven
 	IO.AddMousePosEvent(Position.X, Position.Y);
 
 	CachedPosition = Position;
+	if(IO.WantCaptureMouse)
+	{
+	}
 	return FReply::Handled();
 }
 
@@ -264,6 +290,11 @@ void SImGuiCanvas::OnMouseLeave(const FPointerEvent& MouseEvent)
 {
 	ImGuiIO& IO = ImGui::GetIO();
 	IO.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+}
+
+void SImGuiCanvas::OnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent)
+{
+	SLeafWidget::OnMouseCaptureLost(CaptureLostEvent);
 }
 
 FReply SImGuiCanvas::OnMouseWheel(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
@@ -689,7 +720,7 @@ void UImGuiSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	vd->bHwndOwned = false;
 	MainViewport->PlatformUserData = vd;
 	
-	FSlateApplication::Get().OnPostTick().AddUObject(this, &UImGuiSubsystem::EndFrame);
+	FSlateApplication::Get().OnPreTick().AddUObject(this, &UImGuiSubsystem::EndFrame);
 	FWorldDelegates::OnPreWorldInitialization.AddUObject(this, &UImGuiSubsystem::PreWorldInitialization);
 	FWorldDelegates::OnWorldInitializedActors.AddUObject(this, &UImGuiSubsystem::WorldInitializedActors);
 }
@@ -765,8 +796,9 @@ void UImGuiSubsystem::EndFrame(float DeltaTime)
 			TSharedPtr<SImGuiCanvas> ImGuiCanvas;
 			GEngine->GameViewport->AddViewportWidgetContent(SAssignNew(ImGuiCanvas, SImGuiCanvas)
 				.Identifier("Main")
-				.ViewportID(MainViewport->ID));
-			
+				.ViewportID(MainViewport->ID), 1000);
+
+			// FSlateApplication::Get().
 			vd->Hwnd = FindWindow(ImGuiCanvas);
 			vd->bHwndOwned = false;
 			vd->Canvas = ImGuiCanvas;
@@ -794,7 +826,16 @@ void UImGuiSubsystem::EndFrame(float DeltaTime)
 				0.0f,
 			};
 		}
-			
+
+		if(FSlateApplication::Get().GetPlatformCursor()->GetType() == EMouseCursor::Type::None)
+		{
+			for(int i=0; i<ImGuiMouseButton_COUNT; ++i)
+			{
+				IO.AddMouseButtonEvent(i, false);
+			}
+			IO.AddMousePosEvent(-FLT_MIN, -FLT_MIN);
+		}
+		
 		ImGui::NewFrame();
 		bInImGuiFrame = true;
 
