@@ -864,7 +864,7 @@ void UImGuiSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	// Make sure that directory is created.
 	IPlatformFile::GetPlatformPhysical().CreateDirectory(*Directory);
 
-	IniFileName.Append(*FPaths::Combine(Directory, "PIEContext0.ini"));
+	IniFileName.Append(*FPaths::Combine(Directory, "ImGui.ini"));
 	IO.IniFilename = IniFileName.ToString();
 
 	ImGui::GetStyle() = GetImGuiStyle();
