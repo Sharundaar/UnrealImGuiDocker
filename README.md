@@ -8,12 +8,12 @@ This is a work in progress, the main goal is to demonstrate usability of the img
 
 # How to Use
 
-Simply clone the repository in your Plugins folder and compile, you can then emmit ImGui commands in any context where you have access to a Tick function. For example here's an editor subsystem that creates an ImGui window depending on a CVar :
+Simply clone the repository in your Plugins folder and compile, you can then emit ImGui commands in any context where you have access to a Tick function. For example here's an editor subsystem that creates an ImGui window depending on a CVar :
 
 ```cpp
 // UnrealDockerEditorExample.h
 UCLASS()
-class WEBSITESUPPORT_API UUnrealDockerEditorExample : public UEditorSubsystem, public FTickableEditorObject
+class UUnrealDockerEditorExample : public UEditorSubsystem, public FTickableEditorObject
 {
   GENERATED_BODY()
 
@@ -62,4 +62,6 @@ TStatId UUnrealDockerEditorExample::GetStatId() const
 }
 ```
 
+# ImGui Usage
 
+You can check my article on ImGui to see an example of an in-game debug UI : https://sharundaar.github.io/leveraging-dearimgui-in-unreal
