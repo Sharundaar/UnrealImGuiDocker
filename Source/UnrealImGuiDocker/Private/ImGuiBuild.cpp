@@ -1,3 +1,5 @@
+// Copyright Sharundaar. All rights reserved.
+
 #define IMGUI_IMPLEMENTATION
 
 // ReSharper disable once CppUnusedIncludeDirective

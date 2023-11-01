@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Sharundaar. All rights reserved.
 
 #pragma once
 
@@ -8,8 +8,6 @@
 class FUnrealImGuiDockerModule : public IModuleInterface
 {
 public:
-
-	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 };

@@ -1,11 +1,7 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Copyright Sharundaar. All rights reserved.
 
 #pragma once
 
-#include <imgui.h>
-#include <string>
-
-#include "CoreMinimal.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "ImGuiSubsystem.generated.h"
 
@@ -22,10 +18,8 @@ public:
 	static void WindowTest();
 	
 protected:
-	void PreWorldInitialization(UWorld* World, FWorldInitializationValues WorldInitializationValues);
 	void WorldInitializedActors(const FActorsInitializedParams& ActorsInitializedParams);
-	void BeginFrame(float DeltaTime);
-	void EndFrame(float DeltaTime);
+	void TickImGui(float DeltaTime);
 	void LevelViewportClientListChanged() const;
 
 	UPROPERTY()
@@ -33,5 +27,5 @@ protected:
 	TUniquePtr<FSlateBrush> FontTextureBrush;
 
 	bool bInImGuiFrame = false;
-	std::string IniFileName;
+	TAnsiStringBuilder<512> IniFileName;
 };

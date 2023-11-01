@@ -1,16 +1,17 @@
-﻿#include "ImGuiSubsystem.h"
+﻿// Copyright Sharundaar. All rights reserved.
 
-#include <string>
+#include "ImGuiSubsystem.h"
 
-#include "Editor.h"
 #include "imgui.h"
-#include "Selection.h"
 #include "Brushes/SlateColorBrush.h"
 #include "Brushes/SlateImageBrush.h"
 #include "Engine/Texture2D.h"
 
 UE_DISABLE_OPTIMIZATION
 
+namespace ImGuiInterop
+{
+	
 // Copy of ImDrawList for safekeeping 
 struct FImGuiDrawList
 {
@@ -79,117 +80,115 @@ void FImGuiDrawData::Set(ImDrawData* DrawData)
 		Cmd.Set(DrawData->CmdLists[i]);
 	}
 }
-
-namespace ImGuiInterop
+	
+static EMouseCursor::Type ImguiToSlateCursor(ImGuiMouseCursor ImGuiCursor)
 {
-	static EMouseCursor::Type ImguiToSlateCursor(ImGuiMouseCursor ImGuiCursor)
+	EMouseCursor::Type SlateCursor = EMouseCursor::Default; 
+	switch (ImGuiCursor)
 	{
-		EMouseCursor::Type SlateCursor = EMouseCursor::Default; 
-		switch (ImGuiCursor)
-		{
-		case ImGuiMouseCursor_Arrow:        SlateCursor = EMouseCursor::Default; break;
-		case ImGuiMouseCursor_TextInput:    SlateCursor = EMouseCursor::TextEditBeam; break;
-		case ImGuiMouseCursor_ResizeAll:    SlateCursor = EMouseCursor::Crosshairs; break;
-		case ImGuiMouseCursor_ResizeEW:     SlateCursor = EMouseCursor::ResizeLeftRight; break;
-		case ImGuiMouseCursor_ResizeNS:     SlateCursor = EMouseCursor::ResizeUpDown; break;
-		case ImGuiMouseCursor_ResizeNESW:   SlateCursor = EMouseCursor::ResizeSouthWest; break;
-		case ImGuiMouseCursor_ResizeNWSE:   SlateCursor = EMouseCursor::ResizeSouthEast; break;
-		case ImGuiMouseCursor_Hand:         SlateCursor = EMouseCursor::Hand; break;
-		case ImGuiMouseCursor_NotAllowed:   SlateCursor = EMouseCursor::Default; break;
-		}
-		return SlateCursor;
+	case ImGuiMouseCursor_Arrow:        SlateCursor = EMouseCursor::Default; break;
+	case ImGuiMouseCursor_TextInput:    SlateCursor = EMouseCursor::TextEditBeam; break;
+	case ImGuiMouseCursor_ResizeAll:    SlateCursor = EMouseCursor::Crosshairs; break;
+	case ImGuiMouseCursor_ResizeEW:     SlateCursor = EMouseCursor::ResizeLeftRight; break;
+	case ImGuiMouseCursor_ResizeNS:     SlateCursor = EMouseCursor::ResizeUpDown; break;
+	case ImGuiMouseCursor_ResizeNESW:   SlateCursor = EMouseCursor::ResizeSouthWest; break;
+	case ImGuiMouseCursor_ResizeNWSE:   SlateCursor = EMouseCursor::ResizeSouthEast; break;
+	case ImGuiMouseCursor_Hand:         SlateCursor = EMouseCursor::Hand; break;
+	case ImGuiMouseCursor_NotAllowed:   SlateCursor = EMouseCursor::Default; break;
 	}
+	return SlateCursor;
+}
 
-	static ImGuiKey SlateToImGuiKey(const FKey& Key)
+static ImGuiKey SlateToImGuiKey(const FKey& Key)
+{
+	static TMap<FKey, ImGuiKey> Mapping = {
+		// { EKeys::None, ImGuiKey_None },
+		{ EKeys::Tab, ImGuiKey_Tab },
+		{ EKeys::Left, ImGuiKey_LeftArrow },
+		{ EKeys::Right, ImGuiKey_RightArrow },
+		{ EKeys::Up, ImGuiKey_UpArrow },
+		{ EKeys::Down, ImGuiKey_DownArrow },
+		{ EKeys::PageUp, ImGuiKey_PageUp },
+		{ EKeys::PageDown, ImGuiKey_PageDown },
+		{ EKeys::Home, ImGuiKey_Home },
+		{ EKeys::End, ImGuiKey_End },
+		{ EKeys::Insert, ImGuiKey_Insert },
+		{ EKeys::Delete, ImGuiKey_Delete },
+		{ EKeys::BackSpace, ImGuiKey_Backspace },
+		{ EKeys::SpaceBar, ImGuiKey_Space },
+		{ EKeys::Enter, ImGuiKey_Enter },
+		{ EKeys::Escape, ImGuiKey_Escape },
+		{ EKeys::LeftControl, ImGuiKey_LeftCtrl }, { EKeys::LeftShift, ImGuiKey_LeftShift }, { EKeys::LeftAlt, ImGuiKey_LeftAlt }, { EKeys::LeftCommand, ImGuiKey_LeftSuper },
+		{ EKeys::RightControl, ImGuiKey_RightCtrl }, { EKeys::RightShift, ImGuiKey_RightShift }, { EKeys::RightAlt, ImGuiKey_RightAlt }, { EKeys::RightCommand, ImGuiKey_RightSuper },
+		// { EKeys::, ImGuiKey_Menu }, // @NOTE: Next to right windows key or AltGr, displays context menu, unreal equivalent unknown or missing
+		{ EKeys::Zero, ImGuiKey_0 }, { EKeys::One, ImGuiKey_1 }, { EKeys::Two, ImGuiKey_2 }, { EKeys::Three, ImGuiKey_3 }, { EKeys::Four, ImGuiKey_4 }, { EKeys::Five, ImGuiKey_5 }, { EKeys::Six, ImGuiKey_6 }, { EKeys::Seven, ImGuiKey_7 }, { EKeys::Eight, ImGuiKey_8 }, { EKeys::Nine, ImGuiKey_9 },
+		{ EKeys::A, ImGuiKey_A }, { EKeys::B, ImGuiKey_B }, { EKeys::C, ImGuiKey_C }, { EKeys::D, ImGuiKey_D }, { EKeys::E, ImGuiKey_E }, { EKeys::F, ImGuiKey_F }, { EKeys::G, ImGuiKey_G }, { EKeys::H, ImGuiKey_H }, { EKeys::I, ImGuiKey_I }, { EKeys::J, ImGuiKey_J },
+		{ EKeys::K, ImGuiKey_K }, { EKeys::L, ImGuiKey_L }, { EKeys::M, ImGuiKey_M }, { EKeys::N, ImGuiKey_N }, { EKeys::O, ImGuiKey_O }, { EKeys::P, ImGuiKey_P }, { EKeys::Q, ImGuiKey_Q }, { EKeys::R, ImGuiKey_R }, { EKeys::S, ImGuiKey_S }, { EKeys::T, ImGuiKey_T },
+		{ EKeys::U, ImGuiKey_U }, { EKeys::V, ImGuiKey_V }, { EKeys::W, ImGuiKey_W }, { EKeys::X, ImGuiKey_X }, { EKeys::Y, ImGuiKey_Y }, { EKeys::Z, ImGuiKey_Z },
+		{ EKeys::F1, ImGuiKey_F1 }, { EKeys::F2, ImGuiKey_F2 }, { EKeys::F3, ImGuiKey_F3 }, { EKeys::F4, ImGuiKey_F4 }, { EKeys::F5, ImGuiKey_F5 }, { EKeys::F6, ImGuiKey_F6 },
+		{ EKeys::F7, ImGuiKey_F7 }, { EKeys::F8, ImGuiKey_F8 }, { EKeys::F9, ImGuiKey_F9 }, { EKeys::F10, ImGuiKey_F10 }, { EKeys::F11, ImGuiKey_F11 }, { EKeys::F12, ImGuiKey_F12 },
+		{ EKeys::Apostrophe, ImGuiKey_Apostrophe },        // '
+		{ EKeys::Comma, ImGuiKey_Comma },             // ,
+		{ EKeys::Subtract, ImGuiKey_Minus },             // -
+		{ EKeys::Period, ImGuiKey_Period },            // .
+		{ EKeys::Slash, ImGuiKey_Slash },             // /
+		{ EKeys::Semicolon, ImGuiKey_Semicolon },         // ;
+		{ EKeys::Equals, ImGuiKey_Equal },             // =
+		{ EKeys::LeftBracket, ImGuiKey_LeftBracket },       // [
+		{ EKeys::Backslash, ImGuiKey_Backslash },         // \ (this text inhibit multiline comment caused by backslash)
+		{ EKeys::RightBracket, ImGuiKey_RightBracket },      // ]
+		{ EKeys::Tilde, ImGuiKey_GraveAccent },       // `
+		{ EKeys::CapsLock, ImGuiKey_CapsLock },
+		{ EKeys::ScrollLock, ImGuiKey_ScrollLock },
+		{ EKeys::NumLock, ImGuiKey_NumLock },
+		// { EKeys::, ImGuiKey_PrintScreen },
+		{ EKeys::Pause, ImGuiKey_Pause },
+		{ EKeys::NumPadZero, ImGuiKey_Keypad0 }, { EKeys::NumPadOne, ImGuiKey_Keypad1 }, { EKeys::NumPadTwo, ImGuiKey_Keypad2 }, { EKeys::NumPadThree, ImGuiKey_Keypad3 }, { EKeys::NumPadFour, ImGuiKey_Keypad4 },
+		{ EKeys::NumPadFive, ImGuiKey_Keypad5 }, { EKeys::NumPadSix, ImGuiKey_Keypad6 }, { EKeys::NumPadSeven, ImGuiKey_Keypad7 }, { EKeys::NumPadEight, ImGuiKey_Keypad8 }, { EKeys::NumPadNine, ImGuiKey_Keypad9 },
+		{ EKeys::Decimal, ImGuiKey_KeypadDecimal },
+		{ EKeys::Divide, ImGuiKey_KeypadDivide },
+		{ EKeys::Multiply, ImGuiKey_KeypadMultiply },
+		{ EKeys::Subtract, ImGuiKey_KeypadSubtract },
+		{ EKeys::Add, ImGuiKey_KeypadAdd },
+		{ EKeys::Enter, ImGuiKey_KeypadEnter },
+		{ EKeys::Equals, ImGuiKey_KeypadEqual },
+
+		// Gamepad (some of those are analog values, 0.0f to 1.0f)                          // NAVIGATION ACTION
+		// (download controller mapping PNG/PSD at http://dearimgui.com/controls_sheets)
+		{ EKeys::Gamepad_Special_Right, ImGuiKey_GamepadStart },          // Menu (Xbox)      + (Switch)   Start/Options (PS)
+		{ EKeys::Gamepad_Special_Left, ImGuiKey_GamepadBack },           // View (Xbox)      - (Switch)   Share (PS)
+		{ EKeys::Gamepad_FaceButton_Left, ImGuiKey_GamepadFaceLeft },       // X (Xbox)         Y (Switch)   Square (PS)        // Tap: Toggle Menu. Hold: Windowing mode (Focus/Move/Resize windows)
+		{ EKeys::Gamepad_FaceButton_Right, ImGuiKey_GamepadFaceRight },      // B (Xbox)         A (Switch)   Circle (PS)        // Cancel / Close / Exit
+		{ EKeys::Gamepad_FaceButton_Top, ImGuiKey_GamepadFaceUp },         // Y (Xbox)         X (Switch)   Triangle (PS)      // Text Input / On-screen Keyboard
+		{ EKeys::Gamepad_FaceButton_Bottom, ImGuiKey_GamepadFaceDown },       // A (Xbox)         B (Switch)   Cross (PS)         // Activate / Open / Toggle / Tweak
+		{ EKeys::Gamepad_DPad_Left, ImGuiKey_GamepadDpadLeft },       // D-pad Left                                       // Move / Tweak / Resize Window (in Windowing mode)
+		{ EKeys::Gamepad_DPad_Right, ImGuiKey_GamepadDpadRight },      // D-pad Right                                      // Move / Tweak / Resize Window (in Windowing mode)
+		{ EKeys::Gamepad_DPad_Up, ImGuiKey_GamepadDpadUp },         // D-pad Up                                         // Move / Tweak / Resize Window (in Windowing mode)
+		{ EKeys::Gamepad_DPad_Down, ImGuiKey_GamepadDpadDown },       // D-pad Down                                       // Move / Tweak / Resize Window (in Windowing mode)
+		{ EKeys::Gamepad_LeftShoulder, ImGuiKey_GamepadL1 },             // L Bumper (Xbox)  L (Switch)   L1 (PS)            // Tweak Slower / Focus Previous (in Windowing mode)
+		{ EKeys::Gamepad_RightShoulder, ImGuiKey_GamepadR1 },             // R Bumper (Xbox)  R (Switch)   R1 (PS)            // Tweak Faster / Focus Next (in Windowing mode)
+		{ EKeys::Gamepad_LeftTrigger, ImGuiKey_GamepadL2 },             // L Trig. (Xbox)   ZL (Switch)  L2 (PS) [Analog]
+		{ EKeys::Gamepad_RightTrigger, ImGuiKey_GamepadR2 },             // R Trig. (Xbox)   ZR (Switch)  R2 (PS) [Analog]
+		{ EKeys::Gamepad_LeftThumbstick, ImGuiKey_GamepadL3 },             // L Stick (Xbox)   L3 (Switch)  L3 (PS)
+		{ EKeys::Gamepad_RightThumbstick, ImGuiKey_GamepadR3 },             // R Stick (Xbox)   R3 (Switch)  R3 (PS)
+		/*
+		{ EKeys::Gamepad_LeftStick_Left, ImGuiKey_GamepadLStickLeft },     // [Analog]                                         // Move Window (in Windowing mode)
+		{ EKeys::GamepadLStickRight, ImGuiKey_GamepadLStickRight },    // [Analog]                                         // Move Window (in Windowing mode)
+		{ EKeys::GamepadLStickUp, ImGuiKey_GamepadLStickUp },       // [Analog]                                         // Move Window (in Windowing mode)
+		{ EKeys::GamepadLStickDown, ImGuiKey_GamepadLStickDown },     // [Analog]                                         // Move Window (in Windowing mode)
+		{ EKeys::GamepadRStickLeft, ImGuiKey_GamepadRStickLeft },     // [Analog]
+		{ EKeys::GamepadRStickRight, ImGuiKey_GamepadRStickRight },    // [Analog]
+		{ EKeys::GamepadRStickUp, ImGuiKey_GamepadRStickUp },       // [Analog]
+		{ EKeys::GamepadRStickDown, ImGuiKey_GamepadRStickDown },     // [Analog]
+		*/
+	};
+
+	if(ImGuiKey* MappedKey = Mapping.Find(Key))
 	{
-		static TMap<FKey, ImGuiKey> Mapping = {
-			// { EKeys::None, ImGuiKey_None },
-			{ EKeys::Tab, ImGuiKey_Tab },
-			{ EKeys::Left, ImGuiKey_LeftArrow },
-			{ EKeys::Right, ImGuiKey_RightArrow },
-			{ EKeys::Up, ImGuiKey_UpArrow },
-			{ EKeys::Down, ImGuiKey_DownArrow },
-			{ EKeys::PageUp, ImGuiKey_PageUp },
-			{ EKeys::PageDown, ImGuiKey_PageDown },
-			{ EKeys::Home, ImGuiKey_Home },
-			{ EKeys::End, ImGuiKey_End },
-			{ EKeys::Insert, ImGuiKey_Insert },
-			{ EKeys::Delete, ImGuiKey_Delete },
-			{ EKeys::BackSpace, ImGuiKey_Backspace },
-			{ EKeys::SpaceBar, ImGuiKey_Space },
-			{ EKeys::Enter, ImGuiKey_Enter },
-			{ EKeys::Escape, ImGuiKey_Escape },
-			{ EKeys::LeftControl, ImGuiKey_LeftCtrl }, { EKeys::LeftShift, ImGuiKey_LeftShift }, { EKeys::LeftAlt, ImGuiKey_LeftAlt }, { EKeys::LeftCommand, ImGuiKey_LeftSuper },
-			{ EKeys::RightControl, ImGuiKey_RightCtrl }, { EKeys::RightShift, ImGuiKey_RightShift }, { EKeys::RightAlt, ImGuiKey_RightAlt }, { EKeys::RightCommand, ImGuiKey_RightSuper },
-			// { EKeys::, ImGuiKey_Menu }, // @NOTE: Next to right windows key or AltGr, displays context menu, unreal equivalent unknown or missing
-			{ EKeys::Zero, ImGuiKey_0 }, { EKeys::One, ImGuiKey_1 }, { EKeys::Two, ImGuiKey_2 }, { EKeys::Three, ImGuiKey_3 }, { EKeys::Four, ImGuiKey_4 }, { EKeys::Five, ImGuiKey_5 }, { EKeys::Six, ImGuiKey_6 }, { EKeys::Seven, ImGuiKey_7 }, { EKeys::Eight, ImGuiKey_8 }, { EKeys::Nine, ImGuiKey_9 },
-			{ EKeys::A, ImGuiKey_A }, { EKeys::B, ImGuiKey_B }, { EKeys::C, ImGuiKey_C }, { EKeys::D, ImGuiKey_D }, { EKeys::E, ImGuiKey_E }, { EKeys::F, ImGuiKey_F }, { EKeys::G, ImGuiKey_G }, { EKeys::H, ImGuiKey_H }, { EKeys::I, ImGuiKey_I }, { EKeys::J, ImGuiKey_J },
-			{ EKeys::K, ImGuiKey_K }, { EKeys::L, ImGuiKey_L }, { EKeys::M, ImGuiKey_M }, { EKeys::N, ImGuiKey_N }, { EKeys::O, ImGuiKey_O }, { EKeys::P, ImGuiKey_P }, { EKeys::Q, ImGuiKey_Q }, { EKeys::R, ImGuiKey_R }, { EKeys::S, ImGuiKey_S }, { EKeys::T, ImGuiKey_T },
-			{ EKeys::U, ImGuiKey_U }, { EKeys::V, ImGuiKey_V }, { EKeys::W, ImGuiKey_W }, { EKeys::X, ImGuiKey_X }, { EKeys::Y, ImGuiKey_Y }, { EKeys::Z, ImGuiKey_Z },
-			{ EKeys::F1, ImGuiKey_F1 }, { EKeys::F2, ImGuiKey_F2 }, { EKeys::F3, ImGuiKey_F3 }, { EKeys::F4, ImGuiKey_F4 }, { EKeys::F5, ImGuiKey_F5 }, { EKeys::F6, ImGuiKey_F6 },
-			{ EKeys::F7, ImGuiKey_F7 }, { EKeys::F8, ImGuiKey_F8 }, { EKeys::F9, ImGuiKey_F9 }, { EKeys::F10, ImGuiKey_F10 }, { EKeys::F11, ImGuiKey_F11 }, { EKeys::F12, ImGuiKey_F12 },
-			{ EKeys::Apostrophe, ImGuiKey_Apostrophe },        // '
-			{ EKeys::Comma, ImGuiKey_Comma },             // ,
-			{ EKeys::Subtract, ImGuiKey_Minus },             // -
-			{ EKeys::Period, ImGuiKey_Period },            // .
-			{ EKeys::Slash, ImGuiKey_Slash },             // /
-			{ EKeys::Semicolon, ImGuiKey_Semicolon },         // ;
-			{ EKeys::Equals, ImGuiKey_Equal },             // =
-			{ EKeys::LeftBracket, ImGuiKey_LeftBracket },       // [
-			{ EKeys::Backslash, ImGuiKey_Backslash },         // \ (this text inhibit multiline comment caused by backslash)
-			{ EKeys::RightBracket, ImGuiKey_RightBracket },      // ]
-			{ EKeys::Tilde, ImGuiKey_GraveAccent },       // `
-			{ EKeys::CapsLock, ImGuiKey_CapsLock },
-			{ EKeys::ScrollLock, ImGuiKey_ScrollLock },
-			{ EKeys::NumLock, ImGuiKey_NumLock },
-			// { EKeys::, ImGuiKey_PrintScreen },
-			{ EKeys::Pause, ImGuiKey_Pause },
-			{ EKeys::NumPadZero, ImGuiKey_Keypad0 }, { EKeys::NumPadOne, ImGuiKey_Keypad1 }, { EKeys::NumPadTwo, ImGuiKey_Keypad2 }, { EKeys::NumPadThree, ImGuiKey_Keypad3 }, { EKeys::NumPadFour, ImGuiKey_Keypad4 },
-			{ EKeys::NumPadFive, ImGuiKey_Keypad5 }, { EKeys::NumPadSix, ImGuiKey_Keypad6 }, { EKeys::NumPadSeven, ImGuiKey_Keypad7 }, { EKeys::NumPadEight, ImGuiKey_Keypad8 }, { EKeys::NumPadNine, ImGuiKey_Keypad9 },
-			{ EKeys::Decimal, ImGuiKey_KeypadDecimal },
-			{ EKeys::Divide, ImGuiKey_KeypadDivide },
-			{ EKeys::Multiply, ImGuiKey_KeypadMultiply },
-			{ EKeys::Subtract, ImGuiKey_KeypadSubtract },
-			{ EKeys::Add, ImGuiKey_KeypadAdd },
-			{ EKeys::Enter, ImGuiKey_KeypadEnter },
-			{ EKeys::Equals, ImGuiKey_KeypadEqual },
-
-			// Gamepad (some of those are analog values, 0.0f to 1.0f)                          // NAVIGATION ACTION
-			// (download controller mapping PNG/PSD at http://dearimgui.com/controls_sheets)
-			{ EKeys::Gamepad_Special_Right, ImGuiKey_GamepadStart },          // Menu (Xbox)      + (Switch)   Start/Options (PS)
-			{ EKeys::Gamepad_Special_Left, ImGuiKey_GamepadBack },           // View (Xbox)      - (Switch)   Share (PS)
-			{ EKeys::Gamepad_FaceButton_Left, ImGuiKey_GamepadFaceLeft },       // X (Xbox)         Y (Switch)   Square (PS)        // Tap: Toggle Menu. Hold: Windowing mode (Focus/Move/Resize windows)
-			{ EKeys::Gamepad_FaceButton_Right, ImGuiKey_GamepadFaceRight },      // B (Xbox)         A (Switch)   Circle (PS)        // Cancel / Close / Exit
-			{ EKeys::Gamepad_FaceButton_Top, ImGuiKey_GamepadFaceUp },         // Y (Xbox)         X (Switch)   Triangle (PS)      // Text Input / On-screen Keyboard
-			{ EKeys::Gamepad_FaceButton_Bottom, ImGuiKey_GamepadFaceDown },       // A (Xbox)         B (Switch)   Cross (PS)         // Activate / Open / Toggle / Tweak
-			{ EKeys::Gamepad_DPad_Left, ImGuiKey_GamepadDpadLeft },       // D-pad Left                                       // Move / Tweak / Resize Window (in Windowing mode)
-			{ EKeys::Gamepad_DPad_Right, ImGuiKey_GamepadDpadRight },      // D-pad Right                                      // Move / Tweak / Resize Window (in Windowing mode)
-			{ EKeys::Gamepad_DPad_Up, ImGuiKey_GamepadDpadUp },         // D-pad Up                                         // Move / Tweak / Resize Window (in Windowing mode)
-			{ EKeys::Gamepad_DPad_Down, ImGuiKey_GamepadDpadDown },       // D-pad Down                                       // Move / Tweak / Resize Window (in Windowing mode)
-			{ EKeys::Gamepad_LeftShoulder, ImGuiKey_GamepadL1 },             // L Bumper (Xbox)  L (Switch)   L1 (PS)            // Tweak Slower / Focus Previous (in Windowing mode)
-			{ EKeys::Gamepad_RightShoulder, ImGuiKey_GamepadR1 },             // R Bumper (Xbox)  R (Switch)   R1 (PS)            // Tweak Faster / Focus Next (in Windowing mode)
-			{ EKeys::Gamepad_LeftTrigger, ImGuiKey_GamepadL2 },             // L Trig. (Xbox)   ZL (Switch)  L2 (PS) [Analog]
-			{ EKeys::Gamepad_RightTrigger, ImGuiKey_GamepadR2 },             // R Trig. (Xbox)   ZR (Switch)  R2 (PS) [Analog]
-			{ EKeys::Gamepad_LeftThumbstick, ImGuiKey_GamepadL3 },             // L Stick (Xbox)   L3 (Switch)  L3 (PS)
-			{ EKeys::Gamepad_RightThumbstick, ImGuiKey_GamepadR3 },             // R Stick (Xbox)   R3 (Switch)  R3 (PS)
-			/*
-			{ EKeys::Gamepad_LeftStick_Left, ImGuiKey_GamepadLStickLeft },     // [Analog]                                         // Move Window (in Windowing mode)
-			{ EKeys::GamepadLStickRight, ImGuiKey_GamepadLStickRight },    // [Analog]                                         // Move Window (in Windowing mode)
-			{ EKeys::GamepadLStickUp, ImGuiKey_GamepadLStickUp },       // [Analog]                                         // Move Window (in Windowing mode)
-			{ EKeys::GamepadLStickDown, ImGuiKey_GamepadLStickDown },     // [Analog]                                         // Move Window (in Windowing mode)
-			{ EKeys::GamepadRStickLeft, ImGuiKey_GamepadRStickLeft },     // [Analog]
-			{ EKeys::GamepadRStickRight, ImGuiKey_GamepadRStickRight },    // [Analog]
-			{ EKeys::GamepadRStickUp, ImGuiKey_GamepadRStickUp },       // [Analog]
-			{ EKeys::GamepadRStickDown, ImGuiKey_GamepadRStickDown },     // [Analog]
-			*/
-		};
-
-		if(ImGuiKey* MappedKey = Mapping.Find(Key))
-		{
-			return *MappedKey;
-		}
-		return ImGuiKey_None;
+		return *MappedKey;
 	}
+	return ImGuiKey_None;
+}
 }
 
 
@@ -240,7 +239,7 @@ public:
 private:
 	ImGuiID ViewportID;
 	FName Identifier;
-	FImGuiDrawData DrawData = {};
+	ImGuiInterop::FImGuiDrawData DrawData = {};
 	FVector2f CachedPosition;
 	EMouseCursor::Type DesiredCursor = EMouseCursor::Default;
 	int DisableThrottling = 0;
@@ -273,7 +272,7 @@ int32 SImGuiCanvas::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeo
 
 	for (int DrawListIdx = 0; DrawListIdx < DrawData.CmdListsCount; ++DrawListIdx)
 	{
-		const FImGuiDrawList& DrawList = DrawData.CmdLists[DrawListIdx];
+		const ImGuiInterop::FImGuiDrawList& DrawList = DrawData.CmdLists[DrawListIdx];
 
 		TArray<FSlateVertex> VertexBuffer;
 		VertexBuffer.SetNumUninitialized(DrawList.VtxBuffer.Num(), false);
@@ -860,8 +859,8 @@ void UImGuiSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	// Make sure that directory is created.
 	IPlatformFile::GetPlatformPhysical().CreateDirectory(*Directory);
 
-	IniFileName = TCHAR_TO_ANSI(*FPaths::Combine(Directory, "PIEContext0.ini"));
-	IO.IniFilename = IniFileName.c_str();
+	IniFileName.Append(*FPaths::Combine(Directory, "PIEContext0.ini"));
+	IO.IniFilename = IniFileName.ToString();
 
 	ImGui::GetStyle() = GetImGuiStyle();
 
@@ -907,8 +906,7 @@ void UImGuiSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	vd->bHwndOwned = false;
 	MainViewport->PlatformUserData = vd;
 
-	FSlateApplication::Get().OnPreTick().AddUObject(this, &UImGuiSubsystem::EndFrame);
-	FWorldDelegates::OnPreWorldInitialization.AddUObject(this, &UImGuiSubsystem::PreWorldInitialization);
+	FSlateApplication::Get().OnPreTick().AddUObject(this, &UImGuiSubsystem::TickImGui);
 	FWorldDelegates::OnWorldInitializedActors.AddUObject(this, &UImGuiSubsystem::WorldInitializedActors);
 }
 
@@ -923,24 +921,12 @@ void UImGuiSubsystem::WindowTest()
 		              Content()[SNew(SImGuiCanvas).Identifier("Test 2")]);
 }
 
-void UImGuiSubsystem::PreWorldInitialization(UWorld* World, FWorldInitializationValues WorldInitializationValues)
-{
-	if (!bInImGuiFrame)
-	{
-		BeginFrame(0.016f);
-	}
-}
-
 void UImGuiSubsystem::WorldInitializedActors(const FActorsInitializedParams& ActorsInitializedParams)
 {
-	if (!bInImGuiFrame)
+	if (!bInImGuiFrame) // @NOTE: This is to ensure we have an imgui frame started when the world starts, might not be necessary anymore
 	{
-		EndFrame(0.016f);
+		TickImGui(0.016f);
 	}
-}
-
-void UImGuiSubsystem::BeginFrame(float DeltaTime)
-{
 }
 
 static TSharedPtr<SWindow> FindWindow(const TSharedPtr<SImGuiCanvas>& Canvas)
@@ -958,9 +944,9 @@ static TSharedPtr<SWindow> FindWindow(const TSharedPtr<SImGuiCanvas>& Canvas)
 	return nullptr;
 }
 
-void UImGuiSubsystem::EndFrame(float DeltaTime)
+void UImGuiSubsystem::TickImGui(float DeltaTime)
 {
-	ImGuiViewport* MainViewport = ImGui::GetMainViewport();
+	const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
 	if (bInImGuiFrame)
 	{
 		// UE_LOG(LogTemp, Warning, TEXT("=== ImGui Render ==="));
@@ -1028,11 +1014,7 @@ void UImGuiSubsystem::EndFrame(float DeltaTime)
 			}
 			IO.AddMousePosEvent(-FLT_MIN, -FLT_MIN);
 		}
-
-		// IO.KeyCtrl = FSlateApplication::Get().GetModifierKeys().IsControlDown();
-		// IO.KeyAlt = FSlateApplication::Get().GetModifierKeys().IsAltDown();
-		// IO.KeyShift = FSlateApplication::Get().GetModifierKeys().IsShiftDown();
-		// IO.KeySuper = FSlateApplication::Get().GetModifierKeys().IsCommandDown();
+		
 		IO.AddKeyEvent(ImGuiMod_Ctrl, FSlateApplication::Get().GetModifierKeys().IsControlDown());
 		IO.AddKeyEvent(ImGuiMod_Shift, FSlateApplication::Get().GetModifierKeys().IsShiftDown());
 		IO.AddKeyEvent(ImGuiMod_Alt, FSlateApplication::Get().GetModifierKeys().IsAltDown());
@@ -1040,60 +1022,6 @@ void UImGuiSubsystem::EndFrame(float DeltaTime)
 		
 		ImGui::NewFrame();
 		bInImGuiFrame = true;
-
-		if (ImGui::Begin("Testing"))
-		{
-			if (ImGui::Button("TestShared"))
-			{
-			}
-			static char Buffer[256] = "Input something";
-			if(ImGui::InputText("TestInput", Buffer, UE_ARRAY_COUNT(Buffer)))
-			{
-				
-			}
-		}
-
-		ImGui::End();
-
-		ImGui::ShowDemoWindow();
-		/* @NOTE: Demo code to demonstrate editor time editing
-
-		if(GEditor)
-		{
-			if(ImGui::Begin("Test Editor Window"))
-			{
-				USelection* SelectedActors = GEditor->GetSelectedActors();
-				if(!SelectedActors)
-				{
-					ImGui::Text("Nothing selected.");
-				}
-				else
-				{
-					if(AActor* TopObject = SelectedActors->GetTop<AActor>())
-					{
-						ImGui::Text("Selected %ls", *TopObject->GetName());
-						ImGui::Text("Components: ");
-						TArray<UActorComponent*> Components;
-						TopObject->GetComponents<UActorComponent>(Components);
-						for(auto& Component: Components)
-						{
-							auto NameANSI = StringCast<ANSICHAR>(*Component->GetName());
-							FString Label = "Delete " + Component->GetName();
-							if(ImGui::Button(TCHAR_TO_ANSI(*Label)))
-							{
-								Component->DestroyComponent();
-							}	
-						}
-					}
-					else
-					{
-						ImGui::Text("Nothing selected.");
-					}
-				}
-			}
-			ImGui::End();
-		}
-		*/
 	}
 }
 

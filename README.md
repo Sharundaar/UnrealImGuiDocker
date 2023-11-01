@@ -2,6 +2,10 @@
 
 DearImGui docker branch integration in Unreal, tested with Unreal 5.3.
 
+# Disclaimer
+
+This is a work in progress, the main goal is to demonstrate usability of the imgui docker branch in unreal. More work is necessary to ensure the current setup doesn't break other "standard" integrations with the engine (in game UMG/Slate, capture, and others)
+
 # How to Use
 
 Simply clone the repository in your Plugins folder and compile, you can then emmit ImGui commands in any context where you have access to a Tick function. For example here's an editor subsystem that creates an ImGui window depending on a CVar :
@@ -42,7 +46,7 @@ void UUnrealDockerEditorExample::Tick(float DeltaTime)
 	bool bOpened = true;
 	if(ImGui::Begin("Unreal Docker Example", &bOpened))
 	{
-    // Write ImGui code here
+ 		// Write ImGui code here
 	}
 	ImGui::End();
 	
@@ -56,5 +60,6 @@ TStatId UUnrealDockerEditorExample::GetStatId() const
 {
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UUnrealDockerEditorExample, STATGROUP_Tickables);
 }
-
 ```
+
+
