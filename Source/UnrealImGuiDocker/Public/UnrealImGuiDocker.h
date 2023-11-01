@@ -1,4 +1,4 @@
-﻿// Copyright Sharundaar. All rights reserved.
+﻿// Copyright Donatien Rabiller. All rights reserved.
 
 #pragma once
 
