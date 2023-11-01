@@ -9,10 +9,12 @@ public class UnrealImGuiDocker : ModuleRules
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		string ImGuiPath = Path.Combine(PluginDirectory, "ThirdParty", "imgui");        
+		string ImGuiPath = Path.Combine(PluginDirectory, "ThirdParty", "imgui");
+		string ImPlotPath = Path.Combine(PluginDirectory, "ThirdParty", "implot");
 		PublicIncludePaths.AddRange(
 			new string[] {
 				ImGuiPath,
+				ImPlotPath
 			}
 		);
 			

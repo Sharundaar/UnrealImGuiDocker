@@ -2,6 +2,8 @@
 
 #include "ImGuiSubsystem.h"
 
+#include <implot.h>
+
 #include "imgui.h"
 #include "Brushes/SlateColorBrush.h"
 #include "Brushes/SlateImageBrush.h"
@@ -494,7 +496,8 @@ void SImGuiCanvas::UpdateDrawData(ImDrawData* InDrawData)
 
 void UImGuiSubsystem::Deinitialize()
 {
-	Super::Deinitialize();
+	ImPlot::DestroyContext();
+	ImGui::DestroyContext();
 }
 
 struct ImGui_ImplUnreal_ViewportData
@@ -601,7 +604,7 @@ static void ImGui_ImplUnreal_DestroyWindow(ImGuiViewport* Viewport)
 	if (ImGui_ImplUnreal_ViewportData* vd = static_cast<ImGui_ImplUnreal_ViewportData*>(Viewport->PlatformUserData))
 	{
 		// @NOTE: Transfer capture here, need to figure out how to check if a child of an SWindow has capture (HasMouseCapture might be sufficient)
-		if (vd->Hwnd->HasMouseCapture() || vd->Canvas->HasMouseCapture())
+		if (vd->Hwnd && (vd->Hwnd->HasMouseCapture() || vd->Canvas->HasMouseCapture()))
 		{
 			FSlateApplication::Get().ReleaseAllPointerCapture();
 			// @TODO: Give capture to main window
@@ -822,6 +825,8 @@ void UImGuiSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	check(!ImGui::GetCurrentContext()); // init imgui only once
 	ImGui::CreateContext();
 
+	ImPlot::CreateContext();
+
 	ImGuiIO& IO = ImGui::GetIO();
 
 	unsigned char* ImPixels;
@@ -877,6 +882,7 @@ void UImGuiSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	IO.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports; // We can create multi-viewports on the Platform side (optional)
 	IO.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport; // We can call io.AddMouseViewportEvent() with correct data (optional)
 	IO.BackendFlags |= ImGuiBackendFlags_RendererHasViewports; // Backend Renderer supports multiple viewports.
+	IO.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 
 	// Platform setup
 	ImGuiPlatformIO& PlatformIO = ImGui::GetPlatformIO();
@@ -1023,10 +1029,6 @@ void UImGuiSubsystem::TickImGui(float DeltaTime)
 		ImGui::NewFrame();
 		bInImGuiFrame = true;
 	}
-}
-
-void UImGuiSubsystem::LevelViewportClientListChanged() const
-{
 }
 
 UE_ENABLE_OPTIMIZATION

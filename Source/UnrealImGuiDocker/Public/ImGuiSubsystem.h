@@ -20,7 +20,6 @@ public:
 protected:
 	void WorldInitializedActors(const FActorsInitializedParams& ActorsInitializedParams);
 	void TickImGui(float DeltaTime);
-	void LevelViewportClientListChanged() const;
 
 	UPROPERTY()
 	TObjectPtr<UTexture2D> FontTexture;
